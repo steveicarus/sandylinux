@@ -1,0 +1,9 @@
+
+*~
+
+fpga/sim/*.o
+fpga/sim/*.log
+fpga/sim/slf_master
+fpga/sim/slf_sim.out
+
+fpga/ver/BUILD.v
