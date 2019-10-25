@@ -1,9 +1,20 @@
 
 *~
+*.o
 
-fpga/sim/*.o
 fpga/sim/*.log
 fpga/sim/slf_master
 fpga/sim/slf_sim.out
 
+fpga/sys/*.cmd
+fpga/sys/*.ko
+fpga/sys/.tmp_versions/*
+fpga/sys/Module.symvers
+fpga/sys/modules.order
+fpga/sys/*.mod.c
+
+fpga/tools/slf_tests
+fpga/tools/watch_buttons
+
+# The build id module is generated.
 fpga/ver/BUILD.v
