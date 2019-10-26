@@ -76,7 +76,7 @@ module SLF_FPGA
     // the processor the master.
     
     // Global signals
-    input wire 			AXI_ACLK,
+    input wire 			AXI_S_ACLK,
     input wire 			AXI_ARESETn,
     // Write address channel
     input wire 			AXI_S_AWVALID,
@@ -136,11 +136,11 @@ module SLF_FPGA
    // to so much stuff, that we want it buffered. We might as well make
    // it active high at the same time.
    reg 				reset_int;
-   always @(posedge AXI_ACLK)    reset_int <= ~AXI_ARESETn;
+   always @(posedge AXI_S_ACLK) reset_int <= ~AXI_ARESETn;
 
    // Receive the write address.
    reg [addr_width-1:0] write_address;
-   always @(posedge AXI_ACLK)
+   always @(posedge AXI_S_ACLK)
      if (reset_int) begin
 	write_address <= 0;
      end else if (AXI_S_AWREADY & AXI_S_AWVALID) begin
@@ -149,7 +149,7 @@ module SLF_FPGA
 
    // Receive the read address
    reg [addr_width-1:0] read_address;
-   always @(posedge AXI_ACLK)
+   always @(posedge AXI_S_ACLK)
      if (reset_int) begin
 	read_address <= 0;
      end else if (AXI_S_ARREADY & AXI_S_ARVALID) begin
@@ -160,24 +160,19 @@ module SLF_FPGA
    // it emits, is generated at compile time.
    wire [31:0] build_id;
    BUILD build_id_mod(.build_id(build_id));
-   wire        BUILD_ID_register_hit_r = (read_address == ADDRESS_BUILD_ID);
 
    // This is the Read/Write register that controls the brightness of
    // the output LEDs.
    reg [31:0]  LEDs_register;
-   wire        LEDs_register_hit_r = (read_address == ADDRESS_LEDs);
    wire        LEDs_register_hit_w = (write_address == ADDRESS_LEDs);
 
    // This is the Read-only register that reads the switches.
    wire [31:0] UserIn_register;
-   wire        UserIn_register_hit_r = (read_address == ADDRESS_UserIn);
 
    reg [31:0]  UserInExp_register;
-   wire        UserInExp_register_hit_r = (read_address == ADDRESS_UserInExp);
    wire        UserInExp_register_hit_w = (write_address == ADDRESS_UserInExp);
 
    reg [31:0]  UserInIEN_register;
-   wire        UserInIEN_register_hit_r = (read_address == ADDRESS_UserInIEN);
    wire        UserInIEN_register_hit_w = (write_address == ADDRESS_UserInIEN);
 
    // This state machine drives the read process. Wait for a read
@@ -203,23 +198,19 @@ module SLF_FPGA
    // track the read address, because the state machine will assure
    // that only one read is in progress, and will only flag the data
    // as valid if it really is valid.
-   always @(posedge AXI_ACLK)
-     if(BUILD_ID_register_hit_r)
-       reg_s_rdata <= build_id;
-     else if (LEDs_register_hit_r)
-       reg_s_rdata <= LEDs_register;
-     else if (UserIn_register_hit_r)
-       reg_s_rdata <= UserIn_register;
-     else if (UserInExp_register_hit_r)
-       reg_s_rdata <= UserInExp_register;
-     else if (UserInIEN_register_hit_r)
-       reg_s_rdata <= UserInIEN_register;
-     else
-       reg_s_rdata <= 32'd0;
+   always @(posedge AXI_S_ACLK)
+     case (read_address)
+       ADDRESS_BUILD_ID : reg_s_rdata <= build_id;
+       ADDRESS_LEDs     : reg_s_rdata <= LEDs_register;
+       ADDRESS_UserIn   : reg_s_rdata <= UserIn_register;
+       ADDRESS_UserInExp: reg_s_rdata <= UserInExp_register;
+       ADDRESS_UserInIEN: reg_s_rdata <= UserInIEN_register;
+       default          : reg_s_rdata <= 32'd0;
+     endcase
 
    reg 	      read_address_ready_del;
 
-   always @(posedge AXI_ACLK)
+   always @(posedge AXI_S_ACLK)
      if (reset_int) begin
 	reg_s_arready <= 1'b1;
 	reg_s_rvalid  <= 1'b0;
@@ -260,7 +251,7 @@ module SLF_FPGA
    assign AXI_S_WREADY  = reg_s_wready;
    assign AXI_S_BVALID  = reg_s_bvalid;
    assign AXI_S_BRESP   = 2'b00;
-   always @(posedge AXI_ACLK)
+   always @(posedge AXI_S_ACLK)
      if (reset_int) begin
 	reg_s_awready <= 1'b1;
 	reg_s_wready  <= 1'b0;
@@ -287,7 +278,7 @@ module SLF_FPGA
      end
 
    // Detect and process writes to the LEDs register.
-   always @(posedge AXI_ACLK)
+   always @(posedge AXI_S_ACLK)
      if (reset_int) begin
 	LEDs_register <= 32'h00000000;
      end else if (LEDs_register_hit_w & AXI_S_WREADY & AXI_S_WVALID) begin
@@ -295,7 +286,7 @@ module SLF_FPGA
      end
 
    // Detect and process writes to the UserInExp register.
-   always @(posedge AXI_ACLK)
+   always @(posedge AXI_S_ACLK)
      if (reset_int) begin
 	UserInExp_register <= 32'h00000000;
      end else if (UserInExp_register_hit_w & AXI_S_WREADY & AXI_S_WVALID) begin
@@ -303,46 +294,46 @@ module SLF_FPGA
      end
 
    // Detect and process writes to the UserInIEN register.
-   always @(posedge AXI_ACLK)
+   always @(posedge AXI_S_ACLK)
      if (reset_int) begin
 	UserInIEN_register <= 32'h00000000;
      end else if (UserInIEN_register_hit_w & AXI_S_WREADY & AXI_S_WVALID) begin
 	UserInIEN_register <= AXI_S_WDATA;
      end
 
-   pulse_width led0_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   pulse_width led0_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 			.WIDTH(LEDs_register[ 3: 0]), .PULSE(LED0));
-   pulse_width led1_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   pulse_width led1_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 			.WIDTH(LEDs_register[ 7: 4]), .PULSE(LED1));
-   pulse_width led2_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   pulse_width led2_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 			.WIDTH(LEDs_register[11: 8]), .PULSE(LED2));
-   pulse_width led3_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   pulse_width led3_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 			.WIDTH(LEDs_register[15:12]), .PULSE(LED3));
-   pulse_width led4_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   pulse_width led4_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 			.WIDTH(LEDs_register[19:16]), .PULSE(LED4));
-   pulse_width led5_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   pulse_width led5_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 			.WIDTH(LEDs_register[23:20]), .PULSE(LED5));
-   pulse_width led6_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   pulse_width led6_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 			.WIDTH(LEDs_register[27:24]), .PULSE(LED6));
-   pulse_width led7_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   pulse_width led7_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 			.WIDTH(LEDs_register[31:28]), .PULSE(LED7));
 
-   debounce pb0_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   debounce pb0_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 		    .SIGNAL_IN(PB0), .SIGNAL_OUT(UserIn_register[0]));
-   debounce pb1_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   debounce pb1_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 		    .SIGNAL_IN(PB1), .SIGNAL_OUT(UserIn_register[1]));
-   debounce pb2_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   debounce pb2_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 		    .SIGNAL_IN(PB2), .SIGNAL_OUT(UserIn_register[2]));
-   debounce pb3_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   debounce pb3_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 		    .SIGNAL_IN(PB3), .SIGNAL_OUT(UserIn_register[3]));
 
-   debounce dip_sw0_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   debounce dip_sw0_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 			.SIGNAL_IN(DIP_SW0), .SIGNAL_OUT(UserIn_register[4]));
-   debounce dip_sw1_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   debounce dip_sw1_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 			.SIGNAL_IN(DIP_SW1), .SIGNAL_OUT(UserIn_register[5]));
-   debounce dip_sw2_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   debounce dip_sw2_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 			.SIGNAL_IN(DIP_SW2), .SIGNAL_OUT(UserIn_register[6]));
-   debounce dip_sw3_mod(.CLOCK(AXI_ACLK), .RESET(reset_int),
+   debounce dip_sw3_mod(.CLOCK(AXI_S_ACLK), .RESET(reset_int),
 			.SIGNAL_IN(DIP_SW3), .SIGNAL_OUT(UserIn_register[7]));
 
    assign UserIn_register[31:8] = 24'h0000_00;

@@ -106,8 +106,8 @@ module SLF_SIM;
    wire [3:0] 		      dip_switch = 4'b0000;
    SLF_FPGA #(.addr_width(REGS_ADDR_WIDTH)) slf_fpga
      (// Global signals
-      .AXI_ACLK   (global_aclk),
-      .AXI_ARESETn(global_areset_n),
+      .AXI_S_ACLK   (global_aclk),
+      .AXI_ARESETn  (global_areset_n),
       // Write address channel
       .AXI_S_AWVALID(regs_awvalid),
       .AXI_S_AWREADY(regs_awready),

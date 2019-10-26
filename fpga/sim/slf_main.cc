@@ -83,7 +83,7 @@ int main(int argc, char*argv[])
       slf_write32(bus, SLF_LEDs, 0x12345678);
 
       LEDs = slf_read32(bus, SLF_LEDs);
-      printf("LEDs = 0x%08" PRIx32 "\n", LEDs);
+      printf("LEDs = 0x%08" PRIx32 " (s.b. 012345678)\n", LEDs);
 
       printf("Wait 4 clocks...\n");
       fflush(stdout);
@@ -96,11 +96,17 @@ int main(int argc, char*argv[])
       printf("UserInExp: 0x%08" PRIx32 "\n", user_in_exp);
       printf("UserInIEN: 0x%08" PRIx32 "\n", user_in_ien);
 
+	// Force an interrupt to happen by setting InExp different
+	// from In, and enabling interrupts.
       slf_write32(bus, SLF_UserInIEN, 0x000000ff);
       slf_write32(bus, SLF_UserInExp, 0x00000011);
       simbus_axi4_wait(bus, 4, 0);
 
-	// Force an interrupt to happen
+      user_in_exp = slf_read32(bus, SLF_UserInExp);
+      user_in_ien = slf_read32(bus, SLF_UserInIEN);
+      printf("UserInExp: 0x%08" PRIx32 " (s.b. 0x00000011)\n", user_in_exp);
+      printf("UserInIEN: 0x%08" PRIx32 " (s.b. 0x000000ff)\n", user_in_ien);
+
       uint32_t irq_mask = 1;
       rc = simbus_axi4_wait(bus, 8, &irq_mask);
       printf("irq_mask after wait: 0x%08" PRIx32 " (expect an interrupt)\n", irq_mask);
