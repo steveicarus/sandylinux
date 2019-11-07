@@ -15,6 +15,9 @@ This is the xSDK project for making the first stage boot loader
 (FSBL). It also includes a Hello World program that runs on the board
 to test basic functionality.
 
+Execute the xSDK GUI with a command like this:
+   /opt/Xilinx/SDK/2019.1/bin/xsdk 2019.1
+
 * u-boot-fsbl.bif
 
 Boot information file for making the boot.bin file that is loaded onto
