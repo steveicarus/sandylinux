@@ -6,7 +6,7 @@
 # is then compiled into the design.
 
 # The build id is a simple date stamp.
-BUILD_ID=`date --utc +32\'d%Y%m%d%H`
+BUILD_ID=`date -u +32\'d%Y%m%d%H`
 
 cat <<EOF
 \`timescale 1ns/1ns
